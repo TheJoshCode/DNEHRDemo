@@ -1,0 +1,90 @@
+<div class="bg-[#16191f] p-6 rounded-lg">
+  <h2 class="text-xl font-semibold mb-4">Settings</h2>
+  <p class="text-sm text-gray-400 mb-6">Manage your account details and profile picture.</p>
+  <form id="settings-form" enctype="multipart/form-data" class="space-y-6">
+    <div class="flex items-center gap-4">
+      <img id="profile-picture-preview" src="https://via.placeholder.com/80" alt="Profile Picture" class="w-20 h-20 rounded-full object-cover">
+      <div>
+        <label for="profile-picture" class="block text-sm font-medium mb-1">Profile Picture</label>
+        <input type="file" id="profile-picture" name="profilePicture" accept="image/*" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none">
+        <p class="text-xs text-gray-500 mt-1">Upload a new profile picture (PNG, JPG, max 5MB).</p>
+      </div>
+    </div>
+    <div>
+      <label for="name" class="block text-sm font-medium mb-1">Full Name</label>
+      <input type="text" id="name" name="name" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none" placeholder="Enter your full name">
+    </div>
+    <div>
+      <label for="email" class="block text-sm font-medium mb-1">Email Address</label>
+      <input type="email" id="email" name="email" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none" placeholder="Enter your email">
+    </div>
+    <div>
+      <label for="password" class="block text-sm font-medium mb-1">Change Password (Optional)</label>
+      <input type="password" id="password" name="password" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none" placeholder="Enter new password">
+    </div>
+    <button type="submit" class="bg-indigo-600 hover:bg-indigo-700 px-4 py-2 rounded text-sm">Save Changes</button>
+  </form>
+  <p id="settings-message" class="text-sm text-gray-400 mt-4 hidden"></p>
+</div>
+<script>
+  async function loadUserData() {
+    try {
+      const response = await fetch('/api/users/1');
+      const user = await response.json();
+      if (response.ok) {
+        document.getElementById('name').value = user.name;
+        document.getElementById('email').value = user.email;
+        if (user.profilePicture) {
+          document.getElementById('profile-picture-preview').src = user.profilePicture;
+          const aiAvatar = document.querySelector('main #ai-avatar');
+          if (aiAvatar) aiAvatar.src = user.profilePicture;
+          const userProfileBubble = document.querySelector('main #user-profile-bubble');
+          if (userProfileBubble) userProfileBubble.src = user.profilePicture;
+        }
+      }
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+  }
+
+  document.getElementById('profile-picture').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        document.getElementById('profile-picture-preview').src = event.target.result;
+      };
+      reader.readAsDataURL(file);
+    }
+  });
+
+  document.getElementById('settings-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    formData.append('userId', 1);
+
+    try {
+      const response = await fetch('/api/settings', {
+        method: 'POST',
+        body: formData
+      });
+      const result = await response.json();
+      const messageEl = document.getElementById('settings-message');
+      messageEl.classList.remove('hidden', 'text-red-500');
+      messageEl.classList.add(response.ok ? 'text-green-500' : 'text-red-500');
+      messageEl.textContent = response.ok ? 'Settings updated successfully!' : `Error: ${result.error}`;
+      if (response.ok && result.profilePicture) {
+        const aiAvatar = document.querySelector('main #ai-avatar');
+        if (aiAvatar) aiAvatar.src = result.profilePicture;
+        const userProfileBubble = document.querySelector('main #user-profile-bubble');
+        if (userProfileBubble) userProfileBubble.src = result.profilePicture;
+      }
+    } catch (error) {
+      document.getElementById('settings-message').classList.remove('hidden');
+      document.getElementById('settings-message').classList.add('text-red-500');
+      document.getElementById('settings-message').textContent = 'Error updating settings.';
+    }
+  });
+
+  loadUserData();
+</script>

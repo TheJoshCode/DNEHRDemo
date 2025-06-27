@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-[#0B0D10] text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>DNE AI Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="flex min-h-screen">
+  <!-- Sidebar -->
+  <aside class="w-64 bg-[#111318] text-gray-300 p-4 flex flex-col justify-between">
+    <div>
+      <h1 class="text-xl font-bold text-white mb-6">DNE <span class="text-indigo-400">AI</span></h1>
+      <nav class="space-y-2">
+        <button class="nav-button block w-full text-left px-4 py-2 rounded bg-violet-600 text-white" data-page="overview">Overview</button>
+        <button class="nav-button block w-full text-left px-4 py-2 hover:bg-gray-800 rounded" data-page="time-off-request.html">Time off request</button>
+        <button class="nav-button block w-full text-left px-4 py-2 hover:bg-gray-800 rounded" data-page="messages.html">Messages</button>
+      </nav>
+    </div>
+    <div class="space-y-2 mt-6">
+      <button class="nav-button block w-full text-left px-4 py-2 hover:bg-gray-800 rounded" data-page="settings.html">Settings</button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-6 space-y-6 relative pt-16">
+    <!-- Profile Picture Bubble (Top Right) -->
+    <div class="absolute top-6 right-6">
+      <img src="https://via.placeholder.com/80" alt="User Profile" id="user-profile-bubble" class="w-12 h-12 rounded-full object-cover cursor-pointer border-2 border-gray-700 hover:border-indigo-500 transition duration-200" onclick="loadSettingsPage()" />
+    </div>
+
+    <!-- Persistent AI Agent Chat Section -->
+    <div class="bg-[#16191f] p-4 rounded-lg flex flex-col gap-4">
+      <div class="flex items-center gap-4">
+        <img src="/avatar.png" alt="Avatar" id="ai-avatar" class="w-20 h-20 rounded-full object-cover" />
+        <div class="flex-1">
+          <p class="text-lg font-semibold">How can I help you?</p>
+          <div class="flex gap-2 mt-2">
+            <input type="text" id="ai-prompt" placeholder="Type something..." class="flex-1 px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none" />
+            <button id="send-prompt" class="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded text-sm">Send</button>
+          </div>
+          <p id="ai-response" class="mt-2 text-sm text-gray-300"></p>
+        </div>
+      </div>
+
+      <!-- Chat History Display with Chat Bubbles -->
+      <div id="chat-history" class="mt-4 max-h-40 overflow-y-auto bg-[#1e2128] p-4 rounded flex flex-col gap-3">
+        <h3 class="text-md font-semibold mb-2">Chat History</h3>
+        <div id="chat-history-list" class="flex flex-col gap-3"></div>
+      </div>
+    </div>
+
+    <!-- Subpage Content -->
+    <div id="subpage-content" class="space-y-6">
+      <!-- Default Overview Content (Cards) -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div class="p-6 rounded-lg bg-gradient-to-br from-indigo-800 to-blue-600">
+          <h2 class="text-lg font-semibold mb-2">Time Off Request</h2>
+          <p class="text-sm mb-4">Request time off for vacation, sick days, or personal needs.</p>
+          <button class="nav-button bg-black bg-opacity-30 hover:bg-opacity-50 px-4 py-2 rounded text-sm" data-page="time-off-request.html">Request Time Off →</button>
+        </div>
+        <div class="p-6 rounded-lg bg-gradient-to-br from-violet-700 to-purple-500">
+          <h2 class="text-lg font-semibold mb-2">Messages</h2>
+          <p class="text-sm mb-4">View and send messages to HR or colleagues.</p>
+          <button class="nav-button bg-black bg-opacity-30 hover:bg-opacity-50 px-4 py-2 rounded text-sm" data-page="messages.html">View Messages →</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- JavaScript for Subpage Navigation, Profile Loading, and AI Inference -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const subpageContent = document.getElementById('subpage-content');
+      const navButtons = document.querySelectorAll('.nav-button');
+      const sendPromptButton = document.getElementById('send-prompt');
+      const aiPromptInput = document.getElementById('ai-prompt');
+      const aiResponse = document.getElementById('ai-response');
+      const userId = 1; // Hardcoded for now; adjust for multi-user support
+
+      // Load user profile picture from database on page load
+      async function loadUserProfile() {
+        try {
+          const response = await fetch('/api/users/1');
+          const user = await response.json();
+          const userProfileBubble = document.getElementById('user-profile-bubble');
+          const aiAvatar = document.getElementById('ai-avatar');
+          if (response.ok) {
+            if (user.profilePicture && user.profilePicture !== '/uploads/default.jpg') {
+              userProfileBubble.src = user.profilePicture;
+              aiAvatar.src = user.profilePicture;
+            } else {
+              userProfileBubble.src = 'https://via.placeholder.com/80';
+              aiAvatar.src = '/avatar.png';
+            }
+          }
+        } catch (error) {
+          console.error('Error loading user profile:', error);
+        }
+      }
+      loadUserProfile();
+
+      // Load chat history and render as chat bubbles
+      async function loadChatHistory() {
+        try {
+          const response = await fetch(`/api/chat-history/${userId}`);
+          const history = await response.json();
+          if (response.ok) {
+            const chatHistoryList = document.getElementById('chat-history-list');
+            chatHistoryList.innerHTML = '';
+
+            history.forEach(item => {
+              // User prompt bubble (right aligned)
+              const userBubble = document.createElement('div');
+              userBubble.className = 'self-end max-w-[70%] bg-violet-600 text-white px-4 py-2 rounded-2xl rounded-br-none shadow';
+              userBubble.textContent = item.prompt;
+
+              // AI response bubble (left aligned)
+              const aiBubble = document.createElement('div');
+              aiBubble.className = 'self-start max-w-[70%] bg-violet-700 text-white px-4 py-2 rounded-2xl rounded-bl-none shadow';
+              aiBubble.textContent = item.response;
+
+              // Timestamp (centered)
+              const timeStamp = document.createElement('div');
+              timeStamp.className = 'self-center text-xs text-gray-400';
+              timeStamp.textContent = new Date(item.createdAt).toLocaleString();
+
+              chatHistoryList.appendChild(userBubble);
+              chatHistoryList.appendChild(aiBubble);
+              chatHistoryList.appendChild(timeStamp);
+            });
+
+            // Auto scroll to bottom
+            const chatHistoryDiv = document.getElementById('chat-history');
+            chatHistoryDiv.scrollTop = chatHistoryDiv.scrollHeight;
+          }
+        } catch (error) {
+          console.error('Error loading chat history:', error);
+        }
+      }
+      loadChatHistory();
+
+      // Handle AI inference request
+      sendPromptButton.addEventListener('click', async () => {
+        const prompt = aiPromptInput.value.trim();
+        if (prompt) {
+          try {
+            const response = await fetch('/api/ai-inference', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt, userId })
+            });
+            const data = await response.json();
+            if (response.ok) {
+              aiResponse.textContent = data.response || 'No response generated.';
+              loadChatHistory(); // Refresh chat history after new response
+            } else {
+              aiResponse.textContent = `Error: ${data.error}`;
+              aiResponse.classList.add('text-red-500');
+            }
+          } catch (error) {
+            aiResponse.textContent = `Error: ${error.message}`;
+            aiResponse.classList.add('text-red-500');
+          }
+          aiPromptInput.value = ''; // Clear input after sending
+        }
+      });
+
+      navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('.nav-button.block').forEach(btn => {
+            btn.classList.remove('bg-violet-600', 'text-white');
+          });
+          if (button.classList.contains('block')) {
+            button.classList.add('bg-violet-600', 'text-white');
+          }
+
+          const page = button.getAttribute('data-page');
+          if (page === 'overview') {
+            subpageContent.innerHTML = `
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="p-6 rounded-lg bg-gradient-to-br from-indigo-800 to-blue-600">
+                  <h2 class="text-lg font-semibold mb-2">Time Off Request</h2>
+                  <p class="text-sm mb-4">Request time off for vacation, sick days, or personal needs.</p>
+                  <button class="nav-button bg-black bg-opacity-30 hover:bg-opacity-50 px-4 py-2 rounded text-sm" data-page="time-off-request.html">Request Time Off →</button>
+                </div>
+                <div class="p-6 rounded-lg bg-gradient-to-br from-violet-700 to-purple-500">
+                  <h2 class="text-lg font-semibold mb-2">Messages</h2>
+                  <p class="text-sm mb-4">View and send messages to HR or colleagues.</p>
+                  <button class="nav-button bg-black bg-opacity-30 hover:bg-opacity-50 px-4 py-2 rounded text-sm" data-page="messages.html">View Messages →</button>
+                </div>
+              </div>
+            `;
+            document.querySelectorAll('.nav-button').forEach(btn => {
+              btn.addEventListener('click', handleNavClick);
+            });
+          } else {
+            fetch(`pages/${page}`)
+              .then(response => response.text())
+              .then(data => {
+                subpageContent.innerHTML = data;
+              })
+              .catch(error => {
+                subpageContent.innerHTML = `<p class="text-red-500">Error loading page: ${error}</p>`;
+              });
+          }
+        });
+      });
+
+      function handleNavClick() {
+        document.querySelectorAll('.nav-button.block').forEach(btn => {
+          btn.classList.remove('bg-violet-600', 'text-white');
+        });
+        if (this.classList.contains('block')) {
+          this.classList.add('bg-violet-600', 'text-white');
+        }
+        const page = this.getAttribute('data-page');
+        if (page === 'overview') {
+          subpageContent.innerHTML = `
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div class="p-6 rounded-lg bg-gradient-to-br from-indigo-800 to-blue-600">
+                <h2 class="text-lg font-semibold mb-2">Time Off Request</h2>
+                <p class="text-sm mb-4">Request time off for vacation, sick days, or personal needs.</p>
+                <button class="nav-button bg-black bg-opacity-30 hover:bg-opacity-50 px-4 py-2 rounded text-sm" data-page="time-off-request.html">Request Time Off →</button>
+              </div>
+              <div class="p-6 rounded-lg bg-gradient-to-br from-violet-700 to-purple-500">
+                <h2 class="text-lg font-semibold mb-2">Messages</h2>
+                <p class="text-sm mb-4">View and send messages to HR or colleagues.</p>
+                <button class="nav-button bg-black bg-opacity-30 hover:bg-opacity-50 px-4 py-2 rounded text-sm" data-page="messages.html">View Messages →</button>
+              </div>
+            </div>
+          `;
+        } else {
+          fetch(`pages/${page}`)
+            .then(response => response.text())
+            .then(data => {
+              subpageContent.innerHTML = data;
+            })
+            .catch(error => {
+              subpageContent.innerHTML = `<p class="text-red-500">Error loading page: ${error}</p>`;
+            });
+        }
+      }
+
+      // Function to load settings page on profile bubble click
+      window.loadSettingsPage = function () {
+        subpageContent.innerHTML = '<p>Loading settings...</p>';
+        fetch('pages/settings.html')
+          .then(response => response.text())
+          .then(data => {
+            subpageContent.innerHTML = data;
+          })
+          .catch(error => {
+            subpageContent.innerHTML = `<p class="text-red-500">Error loading settings: ${error}</p>`;
+          });
+      };
+    });
+  </script>
+</body>
+</html>

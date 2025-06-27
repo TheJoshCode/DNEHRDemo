@@ -1,0 +1,121 @@
+<div class="bg-[#16191f] p-6 rounded-lg">
+  <h2 class="text-xl font-semibold mb-4">Time Off Request</h2>
+  <p class="text-sm text-gray-400 mb-6">Submit a request for vacation, sick leave, or personal time off.</p>
+  <form id="time-off-form" class="space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <!-- Left Column -->
+      <div class="space-y-4">
+        <div>
+          <label for="leave-type" class="block text-sm font-medium mb-1">Type of Leave</label>
+          <select id="leave-type" name="leaveType" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none">
+            <option value="vacation">e.g., Vacation</option>
+            <option value="sick">Sick Leave</option>
+            <option value="personal">Personal Leave</option>
+          </select>
+        </div>
+        <div>
+          <label for="reason" class="block text-sm font-medium mb-1">Reason (Optional)</label>
+          <textarea id="reason" name="reason" rows="3" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none" placeholder="e.g., Just a quick trip to recharge!"></textarea>
+        </div>
+        <div>
+          <label for="document" class="block text-sm font-medium mb-1">Attach Document (Optional)</label>
+          <div class="w-full px-4 py-2 rounded bg-[#1e2128] border-2 border-dashed border-gray-600 text-gray-400 flex items-center justify-center">
+            <span>Drag and Drop here or Browse files</span>
+            <input type="file" id="document" name="document" accept=".pdf,.doc,.docx" class="hidden">
+          </div>
+        </div>
+        <div>
+          <label for="approver" class="block text-sm font-medium mb-1">Approver (if required)</label>
+          <select id="approver" name="approver" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none">
+            <option value="">Select manager</option>
+            <option value="max">Max M.</option>
+            <option value="sarah">Sarah J.</option>
+          </select>
+        </div>
+      </div>
+      <!-- Right Column -->
+      <div class="space-y-4">
+        <div>
+          <label class="block text-sm font-medium mb-1">Select Dates</label>
+          <input type="date" id="start-date" name="startDate" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none mb-2">
+          <input type="date" id="end-date" name="endDate" class="w-full px-4 py-2 rounded bg-[#1e2128] text-white focus:outline-none">
+        </div>
+        <div class="bg-[#1e2128] p-4 rounded-lg">
+          <h3 class="text-sm font-semibold mb-2">Summary</h3>
+          <p class="text-xs text-gray-400">Type: <span id="summary-type"></span></p>
+          <p class="text-xs text-gray-400">Dates: <span id="summary-dates"></span> (<span id="summary-days"></span> working days)</p>
+          <p class="text-xs text-gray-400">Reason: <span id="summary-reason"></span></p>
+          <p class="text-xs text-gray-400">Approver: <span id="summary-approver"></span></p>
+        </div>
+      </div>
+    </div>
+    <div class="flex justify-end gap-4">
+      <button type="button" class="px-4 py-2 rounded bg-gray-600 hover:bg-gray-700 text-sm">Cancel</button>
+      <button type="submit" class="bg-violet-600 hover:bg-violet-700 px-4 py-2 rounded text-sm">Submit Request</button>
+    </div>
+  </form>
+  <p id="time-off-message" class="text-sm text-gray-400 mt-4 hidden"></p>
+</div>
+<script>
+  document.getElementById('time-off-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = {
+      leaveType: formData.get('leaveType'),
+      startDate: formData.get('startDate'),
+      endDate: formData.get('endDate'),
+      reason: formData.get('reason') || '',
+      approver: formData.get('approver') || '',
+      userId: 1
+    };
+
+    try {
+      const response = await fetch('/api/time-off', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      const result = await response.json();
+      const messageEl = document.getElementById('time-off-message');
+      messageEl.classList.remove('hidden', 'text-red-500');
+      messageEl.classList.add(response.ok ? 'text-green-500' : 'text-red-500');
+      messageEl.textContent = response.ok ? 'Request submitted successfully!' : `Error: ${result.error}`;
+    } catch (error) {
+      document.getElementById('time-off-message').classList.remove('hidden');
+      document.getElementById('time-off-message').classList.add('text-red-500');
+      document.getElementById('time-off-message').textContent = 'Error submitting request.';
+    }
+  });
+
+  ['leave-type', 'start-date', 'end-date', 'reason', 'approver'].forEach(id => {
+    document.getElementById(id).addEventListener('change', updateSummary);
+  });
+
+  function updateSummary() {
+    const leaveType = document.getElementById('leave-type').value;
+    const startDate = document.getElementById('start-date').value;
+    const endDate = document.getElementById('end-date').value;
+    const reason = document.getElementById('reason').value || 'N/A';
+    const approver = document.getElementById('approver').value || 'N/A';
+
+    document.getElementById('summary-type').textContent = leaveType || 'N/A';
+    document.getElementById('summary-dates').textContent = `${startDate} - ${endDate}` || 'N/A';
+    document.getElementById('summary-days').textContent = calculateWorkingDays(startDate, endDate) || 'N/A';
+    document.getElementById('summary-reason').textContent = reason;
+    document.getElementById('summary-approver').textContent = approver;
+  }
+
+  function calculateWorkingDays(startDate, endDate) {
+    if (!startDate || !endDate) return 0;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    let days = 0;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const day = d.getDay();
+      if (day !== 0 && day !== 6) days++;
+    }
+    return days;
+  }
+
+  updateSummary();
+</script>
