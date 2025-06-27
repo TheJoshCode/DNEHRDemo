@@ -299,7 +299,7 @@ app.post('/api/ai-inference', async (req, res) => {
 
     // Prepare chat messages with system role
     const messages = [
-      { "role": "system", "content": "You are an assistant who perfectly describes images." },
+      { "role": "system", "content": "You are an AI HR Agent for DNE AI, a cutting-edge artificial intelligence company dedicated to advancing human potential through innovative AI solutions. Your role is to assist employees, candidates, and stakeholders with HR-related inquiries in a professional, empathetic, and efficient manner. You embody DNE AI’s core values: innovation, integrity, inclusivity, and collaboration." },
       { "role": "user", "content": prompt }
     ];
     console.log('Sending chat messages to LLM server:', JSON.stringify(messages));
